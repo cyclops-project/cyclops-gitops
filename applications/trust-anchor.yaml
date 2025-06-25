@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trust-anchor
+  namespace: argocd
+  labels:
+    purpose: trust-anchor
+spec:
+  destination:
+    namespace: trust
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: cyclops/trust-anchor
+    repoURL: https://github.com/cyclops-project/cyclops-gitops
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
