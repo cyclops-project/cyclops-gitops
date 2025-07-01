@@ -1,0 +1,12 @@
+apiVersion: v2
+name: ro-broker
+description: Chart for a read only broker
+type: application
+version: 1.0.0
+dependencies:
+  - name: application
+    alias: broker
+    repository: https://stakater.github.io/stakater-charts
+    version: 6.0.2
+    condition: broker.enabled
+  

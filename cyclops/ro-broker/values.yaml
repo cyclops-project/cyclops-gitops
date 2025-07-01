@@ -1,0 +1,38 @@
+broker:
+  enabled: true
+  applicationName: ro-broker
+  deployment:
+    image:
+      repository: quay.io/pulledtim/ro-broker
+      tag: latest
+      pullPolicy: Always
+    startupProbe:
+      enabled: true
+      httpGet:
+        path: '/ngsi-ld/v1/entities'
+        port: 3000
+    livenessProbe:
+      enabled: true
+      httpGet:
+        path: '/ngsi-ld/v1/entities'
+        port: 3000
+  service:
+    ports:
+      - port: 8080
+        name: http
+        protocol: TCP
+        targetPort: 3000
+  ingress:
+    enabled: true
+    hosts:
+        host: ro-broker.fiware.cloud
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/backend-protocol: HTTP
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    tls:
+      - secretName: ro-broker-tls
+        hosts:
+          - ro-broker.fiware.cloud
+
+      
