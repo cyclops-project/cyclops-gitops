@@ -25,7 +25,9 @@ broker:
   ingress:
     enabled: true
     hosts:
-        host: ro-broker.fiware.cloud
+      - host: ro-broker.fiware.cloud
+        paths:
+          - path: /
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-prod
       nginx.ingress.kubernetes.io/backend-protocol: HTTP
