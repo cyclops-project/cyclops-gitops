@@ -81,19 +81,27 @@ nginx:
 
   serverBlock: |-
     server {
-        listen 0.0.0.0:8080;
+      listen 0.0.0.0:8080;
     
-        location / {
-            return 200 "hello!";
+      set $allow_override 0;
+      if ($http_x_custom_header = $ALLOWED_HEADER_VALUE) {
+          set $allow_override 1;
+      }
+    
+      location /* {
+        return 200 "hello!";
+      }
+    
+      location /ngsi-ld/ {  
+        limit_except GET {
+            deny all;
         }
-    
-        location /ngsi-ld/ {
-            proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
-    
-            # Only allow GET unless header is valid
-            if (($request_method !~ ^(GET)$) && ($http_x_custom_header != $ALLOWED_HEADER_VALUE)) {
-               return 403;
+        if ($allow_override = 1) {
+            limit_except GET {
+                allow all;
             }
         }
+        proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
+      }
     }
       
