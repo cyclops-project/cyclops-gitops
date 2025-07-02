@@ -91,10 +91,8 @@ nginx:
             proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
     
             # Only allow GET unless header is valid
-            if ($request_method !~ ^(GET)$) {
-                if ($http_x_custom_header != $ALLOWED_HEADER_VALUE) {
-                    return 403;
-                }
+            if (($request_method !~ ^(GET)$) && ($http_x_custom_header != $ALLOWED_HEADER_VALUE)) {
+               return 403;
             }
         }
     }
