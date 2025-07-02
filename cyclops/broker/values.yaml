@@ -88,26 +88,14 @@ nginx:
         }
     
         location /ngsi-ld/ {
-            # Deny non-GET methods by default
-            limit_except GET {
-                deny all;
-            }
+            proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
     
-            # Allow non-GET if the header matches the env variable
-            set $allow_override 0;
-    
-            if ($http_x_custom_header = $ALLOWED_HEADER_VALUE) {
-                set $allow_override 1;
-            }
-    
-            if ($allow_override = 1) {
-                # Cancel the previous deny
-                limit_except GET {
-                    allow all;
+            # Only allow GET unless header is valid
+            if ($request_method !~ ^(GET)$) {
+                if ($http_x_custom_header != $ALLOWED_HEADER_VALUE) {
+                    return 403;
                 }
             }
-    
-            proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
         }
     }
       
