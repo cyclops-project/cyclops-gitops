@@ -77,18 +77,37 @@ nginx:
       cert-manager.io/cluster-issuer: letsencrypt-prod
       nginx.ingress.kubernetes.io/backend-protocol: HTTP
       nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  extraEnvVarsSecret: nginx-ngsi-ld-secret
 
   serverBlock: |-
     server {
-      listen 0.0.0.0:8080;
-      location /* {
-        return 200 "hello!";
-      }
-      location /ngsi-ld/ {
-        limit_except GET {
-            deny all;
+        listen 0.0.0.0:8080;
+    
+        location / {
+            return 200 "hello!";
         }
-        proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
-      }
+    
+        location /ngsi-ld/ {
+            # Deny non-GET methods by default
+            limit_except GET {
+                deny all;
+            }
+    
+            # Allow non-GET if the header matches the env variable
+            set $allow_override 0;
+    
+            if ($http_x_custom_header = $ALLOWED_HEADER_VALUE) {
+                set $allow_override 1;
+            }
+    
+            if ($allow_override = 1) {
+                # Cancel the previous deny
+                limit_except GET {
+                    allow all;
+                }
+            }
+    
+            proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
+        }
     }
       
