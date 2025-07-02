@@ -78,6 +78,24 @@ nginx:
       nginx.ingress.kubernetes.io/backend-protocol: HTTP
       nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
   extraEnvVarsSecret: nginx-ngsi-ld-secret
-  existingServerBlockConfigmap: nginx-server-block
-  existingNginxConfigurationConfigMap: nginx-main-config
+
+  serverBlock: |-
+    server {
+        listen 0.0.0.0:8080;
+    
+        location / {
+            return 200 "hello!";
+        }
+    
+        location /ngsi-ld/ {
+            proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
+    
+            # Only allow GET unless header is valid
+            if ($request_method !~ ^(GET)$) {
+                if ($http_x_custom_header != $ALLOWED_HEADER_VALUE) {
+                    return 403;
+                }
+            }
+        }
+    }
       
