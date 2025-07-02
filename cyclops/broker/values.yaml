@@ -1,0 +1,94 @@
+dataplane:
+  generatePasswords:
+    # -- should a password for the database connection of dataplane components be generated in the cluster
+    enabled: true
+    #-- name of the secret to put the generated password into
+    secretName: data-service-secret
+
+postgis:
+  # -- should it be enabled? set to false if one outside the chart is used.
+  enabled: true
+  image:
+    # -- fixes the unpullable image referenced in the chart
+    tag: 13.18.0
+  # -- overrides the generated name, provides stable service names - this should be avoided if multiple instances are available in the same namespace
+  fullnameOverride: data-service-postgis
+  # -- overrides the generated name, provides stable service names - this should be avoided if multiple instances are available in the same namespace
+  nameOverride: data-service-postgis
+  ## auth configuration for the database
+  auth:
+    existingSecret: data-service-secret
+    secretKeys:
+      adminPasswordKey: postgres-admin-password
+      userPasswordKey: postgres-user-password
+  ## configuration of the postgres primary replicas
+  primary:
+    ## provide db initialization
+    initdb:
+      ## provide scripts for initialization
+      scripts:
+        # -- enable the postgis extension and create the database as expected by scorpio
+        enable.sh: |
+          psql postgresql://postgres:${POSTGRES_PASSWORD}@localhost:5432 -c "CREATE EXTENSION postgis;"
+          psql postgresql://postgres:${POSTGRES_PASSWORD}@localhost:5432 -c "CREATE DATABASE ngb;"
+
+## configuration of the context-broker - see https://github.com/FIWARE/helm-charts/tree/main/charts/scorpio-broker-aaio for details
+scorpio:
+  fullnameOverride: data-service-scorpio
+  # -- should scorpio be enabled
+  enabled: true
+  ## configuration of the image to be used
+  image:
+    # -- repository to be used - resource friendly all-in-one-runner without kafka
+    repository: scorpiobroker/all-in-one-runner
+    # -- tag of the image to be used - latest java image without kafka
+    tag: java-4.1.10
+  ## configuration of the database to be used by broker
+  db:
+    # -- host of the db
+    dbhost: data-service-postgis
+    # -- username to be used
+    user: postgres
+    existingSecret:
+      enabled: true
+      name: data-service-secret
+      key: postgres-admin-password
+  ## configuration of the readiness probe
+  readinessProbe:
+    # -- path to be used for the readiness probe, older versions used /actuator/health
+    path: /q/health
+  ## configuration of the liveness probe
+  livenessProbe:
+    # -- path to be used for the readiness probe, older versions used /actuator/health
+    path: /q/health
+  ## configuration to be used for the service offered by scorpio
+  service:
+    # -- ClusterIP is the recommended type for most clusters
+    type: ClusterIP
+
+nginx:
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    hostname: broker.fiware.cloud
+    tls: true
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/backend-protocol: HTTP
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+  serverBlock: |-
+    server {
+      listen 0.0.0.0:8080;
+      location /* {
+        return 200 "hello!";
+      }
+      location /ngsi-ld/ {
+        limit_except GET {
+            deny all;
+        }
+        proxy_pass http://data-service-scorpio:9090/ngsi-ld/;
+      }
+    }
+      
